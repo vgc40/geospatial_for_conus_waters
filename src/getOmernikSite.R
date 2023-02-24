@@ -2,7 +2,7 @@ getOmernikSite <- function(df = sites){
   
   call <- "https://gaftp.epa.gov/EPADataCommons/ORD/Ecoregions/us/us_eco_l3_state_boundaries.zip"
   
-  #download boundary 
+  #download omernik data from EPA 
   temp1 <- tempfile()
   download.file(paste0(call), destfile = temp1, method = "curl")
   temp2 <- tempfile()

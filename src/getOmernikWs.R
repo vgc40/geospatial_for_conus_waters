@@ -1,11 +1,3 @@
-#' Import Omernik III Ecoregion shapefile
-#' 
-#' This function pulls Omernik III ecoregion shapefiles within the park(s) of interest. 
-#'
-#' 
-#' @param df An sf polygon object, used to extract dominant ecoregion within the polygon(s)
-#'
-#' @return A dataframe with dominant ecoregion in the watershed added.
 getOmernikWs <- function(df = sites, sf = site_watersheds){
   
   call <- "https://gaftp.epa.gov/EPADataCommons/ORD/Ecoregions/us/us_eco_l3_state_boundaries.zip"

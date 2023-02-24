@@ -1,6 +1,6 @@
 getPRISM <- function(df = sites){
 
-# PRISM normals downloaded from on 02.22.2023
+# PRISM normals downloaded on 02.22.2023
 
 tmean <- terra::rast('data/PRISM_tmean_30yr_normal_800mM4_annual_bil/PRISM_tmean_30yr_normal_800mM4_annual_bil.bil') %>% terra::project(., sites)
 tmax  <- terra::rast('data/PRISM_tmax_30yr_normal_800mM4_annual_bil/PRISM_tmax_30yr_normal_800mM4_annual_bil.bil') %>% terra::project(., sites)

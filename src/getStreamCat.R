@@ -94,9 +94,11 @@ sites <- reduce(bound_streamcat$overlaps, inner_join, by = 'COMID') %>%
   rename(comid = COMID) %>%
   inner_join(sites, .)
 
+if(save == FALSE){
+  unlink(file.path(getwd(), "/data/temp_streamcat/"), recursive = T)
+  dir.create(file.path(getwd(), "/data/temp_streamcat/"), showWarnings = FALSE)
+}
+
 return(sites)
 
-if(save == FALSE){
-  unlink(file.path(getwd(), "data/temp_streamcat/"), recursive = T)
-  }
 }

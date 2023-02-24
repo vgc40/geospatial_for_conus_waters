@@ -7,7 +7,7 @@ getAridity <- function(df = sites, sf = site_watersheds){
 # unzip(temp1, exdir = "data/geo_extras")
 
 sf::sf_use_s2(FALSE)
-
+# downloaded this data on 2.22.23
 aridity <- terra::rast("data/Global-AI_ET0_v3_annual/ai_v3_yr.tif") %>% terra::project(df)
 
 point_aridity <- terra::extract(aridity, df, na.rm = TRUE, df = TRUE) %>%

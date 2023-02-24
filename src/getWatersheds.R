@@ -52,7 +52,7 @@ getWatersheds <- function(df = sites, massive = TRUE, make_pretty = TRUE){
   if(massive == TRUE){
     # If you are running this code across MANY watersheds or watersheds are LARGE (think Mississippi River),
     # you can make the code faster by using the stored CONUS catchment polygons instead of the code below. 
-    # Trade-off is polygons are not the most up-to-date.
+    # Trade-off is polygons are not the most up-to-date since it uses a static, downloaded version.
     catchments <- readRDS('data/us_catchments.RDS') %>%
       rename(comid = FEATUREID) %>%
       filter(comid %in% upstream_list$comid)
