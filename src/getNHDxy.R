@@ -1,4 +1,4 @@
-getNHD <- function(df = sites){
+getNHDxy <- function(df = sites){
 
   #Get the comid (i.e., hydrography identifier) for each site
 for(i in 1:nrow(df)){
@@ -39,7 +39,10 @@ site_lines <- st_read('data/site_flowlines.gpkg', quiet = T) %>%
 
 #join site points to NHD data
 df <- df %>%
-  left_join(site_lines,by='comid')
+  left_join(site_lines,by='comid') %>%
+  select(-c(geom)) %>%
+  mutate(across(3:146, as.character)) %>%
+  mutate(comid = as.integer(comid))
 
 print(paste0(nrow(df), " locations linked to the NHD."))
 

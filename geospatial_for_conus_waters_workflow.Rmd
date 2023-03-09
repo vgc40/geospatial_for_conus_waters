@@ -18,9 +18,9 @@ library(ggspatial)
 
 # this gives you an error, but it can be ignored:
 try(plyr::ldply(list.files(path="src/",
-                       pattern="*.R",
-                       full.names=TRUE),
-            source))
+                           pattern="*.R",
+                           full.names=TRUE),
+                source))
 # Rmarkdown options
 knitr::opts_chunk$set(echo = T, warning = F, comment = F, message = F)
 
@@ -54,9 +54,10 @@ Identify each sample's NHD COMID. This COMID will allow site linkages with all d
 sf_use_s2(FALSE)
 
 sites <- read_csv("data/placeholder.csv") %>%
-  st_as_sf(coords = c("longitude","latitude"), crs = 4269) # 4269 = NAD83 CRS
+  dplyr::select(site, latitude, longitude) %>% 
+  sf::st_as_sf(coords = c("longitude","latitude"), crs = 4269) # 4269 = NAD83 CRS
 
-if(st_crs(sites) != st_crs(4269)){
+if(sf::st_crs(sites) != sf::st_crs(4269)){
   sites <- sites %>% st_transform(., crs = 4269)
 }
 
@@ -66,14 +67,16 @@ mapview(sites)
 Pull all meta data associated with each site's COMID.
 
 ```{r}
-sites <- getNHD(df = sites)
+sites <- getNHDxy(df = sites)
+#OR
+sites <- getNHDcomid(df = select(sites, site, comid)) #sites)
 ```
 
 Make NHD-based watershed shapefiles for all CONUS sites. To make this step MUCH faster, it is best to have a locally downloaded version on the National NHD catchment shapefile stored on your local system. I have already included this shapefile in the `data` folder. 
 
 ```{r}
 site_watersheds <- getWatersheds(df = sites, make_pretty = TRUE) %>%
-  inner_join(., select(st_drop_geometry(sites), site, comid), by = "comid")
+  inner_join(., select(sf::st_drop_geometry(sites), site, comid), by = "comid")
 ```
 
 Ensure that each site is accurately represented by the NHD (some locations may be located on streams that are too small to be captured by the NHD, others may have coordinates that are slightly off, potentially placing them in the wrong catchment). Here, we create simple maps of each watershed, to determine if the delineated watershed/NHD attributes are appropriate. This can take a while depending on how many sites you are doing this for. Maps are automatically stored in the `data/maps/` folder. It is highly recommended to review each map, particularly for known locations along BIG rivers and TINY streams.
@@ -87,9 +90,56 @@ Interactive map showing all sites and their delineated watersheds:
 ```{r}
 mapview(site_watersheds, col.regions = "#56B4E9", alpha.regions = 0.2, lwd = 3, layer.name = "Watershed") +
   
-mapview(sites, cex = 5, col.regions = "black", layer.name = "Points") + 
+  mapview(sites, cex = 5, col.regions = "black", layer.name = "Points") + 
   
-mapview(st_read('data/site_flowlines.gpkg', quiet = T), lwd = 3, color = "red", layer.name = "Flowline")
+  mapview(st_read('data/site_flowlines.gpkg', quiet = T), lwd = 3, color = "red", layer.name = "Flowline")
+```
+
+If after reviewing the delineated watersheds you have found that some site coordinates place that location in the wrong catchment, we will need to explore that site's nearby catchments to link it to the correct COMID:
+
+```{r}
+# Hmm... site9 on the Platte River doesn't seem right...
+
+sus_points <- sites %>% 
+  # list weird sites here:
+  filter(site %in% c("site8"))
+
+sus_nhd <- sus_points %>% 
+  sf::st_buffer(., dist = 0.01) %>%
+  sus_mapper(.)
+
+mapview(sus_nhd[[2]], col.regions = "#56B4E9", alpha.regions = 0.4, legend = FALSE) +
+  mapview(sus_points, cex = 5, col.regions = "black", legend = FALSE) + 
+  mapview(sus_nhd[[1]], lwd = 1.5, color = "red", legend = FALSE)
+
+# Based on the map, it appears that this site should be linked to comid = 17416032
+# In the table below, add sites and their correct comid's
+
+updated_sites <- tibble(site = c("site8"),
+                   comid = c(17416032))
+
+sites <- updated_sites %>%
+  getNHDcomid(.) %>%
+  # Replace this new data in the sites df:
+  bind_rows(filter(sites, !site %in% sus_points$site))
+
+site_watersheds <- getWatersheds(df = updated_sites, make_pretty = TRUE) %>%
+  inner_join(., select(sf::st_drop_geometry(updated_sites), site, comid), by = "comid") %>%
+  bind_rows(filter(site_watersheds, !site %in% sus_points$site))
+```
+
+
+If after reviewing the delineated watersheds you have found that some locations are in fact not appropriate for this analysis, remove them now:
+
+```{r}
+small_sites <- c("site9")
+
+# site 9 appears to be a headwater stream too small for analysis with NHDPlus V2:
+sites <- sites %>%
+  filter(!site %in% small_sites)
+
+site_watersheds <- site_watersheds %>%
+  filter(!site %in% small_sites)
 ```
 
 # StreamCat data extractions
@@ -97,16 +147,16 @@ mapview(st_read('data/site_flowlines.gpkg', quiet = T), lwd = 3, color = "red", 
 This `getStreamCat()` function is adapted from [Simon Topp's Lakecat extraction](https://github.com/SimonTopp/USLakeClarityTrendr/blob/master/1_nhd_join_and_munge.Rmd). StreamCat is *huge* (\~600 possible variables). And while EPA has since made an [API that interacts with StreamCat](https://www.epa.gov/national-aquatic-resource-surveys/streamcat-metrics-rest-api) (which would make this code 1 billion times faster), it wasn't public when this code was written. So! We made a function that:
 
 1)  Downloads StreamCat categories of data (e.g. dam density, urbanization, etc.) for all regions of CONUS.
-2)  Joins that data to our sites by their NHD comid.
+2)  Joins that data to our sites by their NHD COMID.
 3)  Then, hilariously, deletes (or not, depending on if you want to keep it) the large gigabytes of data we don't use and only keeps the data that matches our sites' NHD comids.
 
 To download the data that you want, be sure to update the `epa_categories` vector argument in `getStreamCat()` with the names of the categorized data sets you are interested in downloading. A list of those data sets can be found [here](https://gaftp.epa.gov/epadatacommons/ORD/NHDPlusLandscapeAttributes/StreamCat/HydroRegions/). Change `save = TRUE` to `save = FALSE` if you do not want to keep all CONUS-level StreamCat data that you downloaded.
 
 ```{r}
 sites <- getStreamCat(sites = sites,
-             # Choose EPA categories to download here. These example two categories took a few minutes to download. 
-             epa_categories = c("ImperviousSurfaces", "Dams"),
-             save = FALSE)
+                      # Choose EPA categories to download here. These example two categories took a few minutes to download. 
+                      epa_categories = c("ImperviousSurfaces", "Dams"),
+                      save = FALSE)
 ```
 
 # Pulling additional geospatial data not in StreamCat

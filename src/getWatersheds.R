@@ -3,16 +3,16 @@ getWatersheds <- function(df = sites, massive = TRUE, make_pretty = TRUE){
   # Read in the NHD. This is a table representing all flow direction data across CONUS.
   nhd <- read_csv('data/nhd_flow_network.csv')
   
-  subset_sites <- sites %>% #remove comid duplicates (i.e., samples located in the same catchment)
+  subset_sites <- df %>% #remove comid duplicates (i.e., samples located in the same catchment)
     distinct(comid,.keep_all=T)
   
   watersheds <- function(spid_union){
     
     tracer <- function(samples){
       
-      small_grow <- as_tibble(subset_sites)
+      small_db <- as_tibble(subset_sites)
       
-      outlet <- small_grow %>%
+      outlet <- small_db %>%
         dplyr::filter(site == samples)
       
       upstream_nhd <- get_UT(nhd, outlet$comid) %>% #upstream trace function in nhdplusTools
@@ -61,7 +61,8 @@ getWatersheds <- function(df = sites, massive = TRUE, make_pretty = TRUE){
   site_watersheds <- merge(catchments, upstream_list, by = 'comid', all.x = FALSE) %>%
     group_by(origin) %>%
     summarize() %>%
-    rename(comid = origin)
+    rename(comid = origin) #%>%
+    #mutate(comid = as.character(comid))
   
   # Here, an option to remove odd holes that form within the watershed that are due to 
   # the catchment boundaries not lining up perfectly. However, this MAY introduce wrong watershed
