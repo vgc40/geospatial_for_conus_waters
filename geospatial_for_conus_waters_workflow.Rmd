@@ -54,7 +54,7 @@ Identify each sample's NHD COMID. This COMID will allow site linkages with all d
 ```{r}
 sf_use_s2(FALSE)
 
-site_type = "comid" # OR site_type = "comid"
+site_type = "xy" # OR site_type = "comid"
 
 sites <- read_csv("data/placeholder.csv")
 ```
