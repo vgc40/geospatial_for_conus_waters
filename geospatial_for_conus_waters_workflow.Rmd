@@ -5,7 +5,7 @@ date: "2023-02-20"
 output: html_document
 ---
 
-```{r setup, include=TRUE, echo = T, warning = F, comment = F, message = F}
+```{r setup, include=TRUE, echo = T, warning = F, comment = F, message = FALSE}
 library(sf)
 library(tidyverse)
 library(terra)
@@ -33,8 +33,9 @@ mapviewOptions(basemaps.color.shuffle=FALSE,basemaps='OpenTopoMap')
 For this code to run properly, your site data must be configured as follows:
 
 1)  Each site is identified with a unique site name. In the data set, this column must be called `site`.
-2)  Each site has coordinates, with column names `longitude` and `latitude`. Knowledge of coordinate projection required.
-3)  Site data table is a CSV, and stored in the `data/` folder. 
+2)  Each site has coordinates, with column names `longitude` and `latitude`. Knowledge of coordinate projection required. **OR:**
+    Each site has their known COMID, with column name `comid`. 
+4)  Site data table is a CSV, and stored in the `data/` folder. 
 
 I have included an example data set called `placeholder.csv`, along with all of the additional data sets necessary for the code to run, stored in the `data` folder. 
 
@@ -48,28 +49,42 @@ This analysis is only appropriate for locations along adequately-sized streams. 
 
 # National Hydrodraphy Dataset (NHD) data extraction
 
-Identify each sample's NHD COMID. This COMID will allow site linkages with all datasets in this workflow.
+Identify each sample's NHD COMID. This COMID will allow site linkages with all datasets in this workflow. If COMID is already listed in the CSV, make `site_type = "comid"`.
 
 ```{r}
 sf_use_s2(FALSE)
 
-sites <- read_csv("data/placeholder.csv") %>%
-  dplyr::select(site, latitude, longitude) %>% 
-  sf::st_as_sf(coords = c("longitude","latitude"), crs = 4269) # 4269 = NAD83 CRS
+site_type = "comid" # OR site_type = "comid"
 
-if(sf::st_crs(sites) != sf::st_crs(4269)){
-  sites <- sites %>% st_transform(., crs = 4269)
-}
-
-mapview(sites)
+sites <- read_csv("data/placeholder.csv")
 ```
 
-Pull all meta data associated with each site's COMID.
+Additional steps for sites with coordinates, and no COMID:
 
 ```{r}
-sites <- getNHDxy(df = sites)
-#OR
-sites <- getNHDcomid(df = select(sites, site, comid)) #sites)
+if(site_type == "xy"){
+  sites <- sites %>%
+    dplyr::select(site, latitude, longitude) %>% 
+    sf::st_as_sf(coords = c("longitude","latitude"), crs = 4269) # 4269 = NAD83 CRS
+  
+  if(sf::st_crs(sites) != sf::st_crs(4269)){
+    sites <- sites %>% st_transform(., crs = 4269)
+  }
+  
+  mapview(sites)
+}
+```
+
+Pull all meta data associated with each site's COMID. 
+
+```{r}
+if(site_type == "xy"){
+  sites <- getNHDxy(df = sites)
+}
+
+if(site_type == "comid"){
+  sites <- getNHDcomid(df = dplyr::select(sites, site, comid))
+}
 ```
 
 Make NHD-based watershed shapefiles for all CONUS sites. To make this step MUCH faster, it is best to have a locally downloaded version on the National NHD catchment shapefile stored on your local system. I have already included this shapefile in the `data` folder. 
@@ -89,11 +104,11 @@ Interactive map showing all sites and their delineated watersheds:
 
 ```{r}
 mapview(site_watersheds, col.regions = "#56B4E9", alpha.regions = 0.2, lwd = 3, layer.name = "Watershed") +
-  
   mapview(sites, cex = 5, col.regions = "black", layer.name = "Points") + 
-  
   mapview(st_read('data/site_flowlines.gpkg', quiet = T), lwd = 3, color = "red", layer.name = "Flowline")
 ```
+
+## Fixing funky sites
 
 If after reviewing the delineated watersheds you have found that some site coordinates place that location in the wrong catchment, we will need to explore that site's nearby catchments to link it to the correct COMID:
 
@@ -116,7 +131,7 @@ mapview(sus_nhd[[2]], col.regions = "#56B4E9", alpha.regions = 0.4, legend = FAL
 # In the table below, add sites and their correct comid's
 
 updated_sites <- tibble(site = c("site8"),
-                   comid = c(17416032))
+                        comid = c(17416032))
 
 sites <- updated_sites %>%
   getNHDcomid(.) %>%
@@ -127,7 +142,6 @@ site_watersheds <- getWatersheds(df = updated_sites, make_pretty = TRUE) %>%
   inner_join(., select(sf::st_drop_geometry(updated_sites), site, comid), by = "comid") %>%
   bind_rows(filter(site_watersheds, !site %in% sus_points$site))
 ```
-
 
 If after reviewing the delineated watersheds you have found that some locations are in fact not appropriate for this analysis, remove them now:
 

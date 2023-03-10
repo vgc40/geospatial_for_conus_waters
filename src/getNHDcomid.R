@@ -57,9 +57,8 @@ getNHDcomid <- function(df = sites){
     select(-c(geometry, geom)) %>%
     mutate(across(1:145, as.character)) %>%
     mutate(comid = as.integer(comid))
-    
   
-  print(paste0(nrow(df), " locations linked to the NHD."))
+  print(paste0(nrow(coords), " locations linked to the NHD."))
   
   return(coords)
   
