@@ -9,7 +9,7 @@ for(i in 1:nrow(df)){
 site_hucs <- list()
 
 for(i in 1:nrow(df)){
-  site_hucs[[i]] <- get_huc12(df[i,], t_srs=4326)
+  site_hucs[[i]] <- get_huc12(df[i,], t_srs=4269)
 }
 
 site_hucs <- do.call('rbind',site_hucs) %>%
@@ -28,7 +28,7 @@ subset_nhdplus(comids = df$comid,
                overwrite = TRUE,
                return_data = FALSE,
                flowline_only = TRUE,
-               out_prj = 4326)
+               out_prj = 4269)
 
 site_lines <- st_read('data/site_flowlines.gpkg', quiet = T) %>%
   #if necessary, remove duplicates that happen due to multiple samples on the same NHD feature:

@@ -7,7 +7,7 @@ getNHDcomid <- function(df = sites){
                  overwrite = TRUE,
                  return_data = FALSE,
                  flowline_only = TRUE,
-                 out_prj = 4326)
+                 out_prj = 4269)
   
   
   df_points <- st_read('data/site_flowlines.gpkg', quiet = T)
@@ -25,13 +25,13 @@ getNHDcomid <- function(df = sites){
   coords <- bind_rows(coords) %>%
     cbind(df, .) %>%
     select(site, comid, longitude = X, latitude = Y) %>%
-    st_as_sf(., coords = c('longitude','latitude'), crs = 4326)
+    st_as_sf(., coords = c('longitude','latitude'), crs = 4269)
   
   # Link NHD hydrologic unit code (HUC, essentially sub-watershed polygons) data to each sample.
   site_hucs <- list()
   
   for(i in 1:nrow(coords)){
-    site_hucs[[i]] <- get_huc12(coords[i,], t_srs=4326)
+    site_hucs[[i]] <- get_huc12(coords[i,], t_srs=4269)
   }
   
   site_hucs <- do.call('rbind',site_hucs) %>%
