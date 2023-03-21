@@ -190,6 +190,9 @@ sites <- getOmernikWs(df = sites, sf = site_watersheds)
 # Extract PRSIM ppt, tmean, tmax, and tmin data for each site's location
 sites <- getPRISM(df = sites)
 
+# Extract mean chemistry values within each site's watershed as well as each site's locationa
+sites <- getChemistry(df = sites, sf = site_watersheds)
+
 # Link to original NPP data set:
 # https://lpdaac.usgs.gov/products/mod17a3hgfv006/ "Terra MODIS Net Primary Production Yearly L4 Global 500 m SIN Grid products are currently unavailable due to unexpected errors in the input data. Please note that a newer version of MODIS land products is available and plans are being developed for the retirement of Version 6 MODIS data products. Users are advised to transition to the improved Version 6.1 products as soon as possible."
 ```
