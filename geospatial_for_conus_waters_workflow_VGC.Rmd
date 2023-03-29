@@ -1,11 +1,21 @@
 ---
 title: "geospatial_for_conus_waters_workflow"
-author: "Kathryn Willi"
+author: "Kathryn Willi modified by VGC"
 date: "2023-02-20"
-output: html_document
+knit: (
+  function(inputFile, encoding) { 
+
+    pSubTitle <- paste0("Geospatial_",Sys.Date())
+
+    rmarkdown::render( 
+      input       = inputFile, 
+      encoding    = encoding, 
+      params      = list(sub_title = pSubTitle),      
+      output_file = pSubTitle)})
 ---
 
 ```{r setup, include=TRUE, echo = T, warning = F, comment = F, message = FALSE}
+rm(list=ls(all=T))
 library(sf)
 library(tidyverse)
 library(terra)
@@ -54,10 +64,8 @@ Identify each sample's NHD COMID. This COMID will allow site linkages with all d
 
 ```{r}
 sf_use_s2(FALSE)
-setwd('C:/Users/gara009/OneDrive - PNNL/Documents/Geospatial_dataset/')
 site_type = "xy" # OR site_type = "comid"
-
-sites <- read_csv("data/placeholder.csv")
+sites <- read_csv("data/SSS_testonly_latlong.csv")
 ```
 
 Additional steps for sites with coordinates, and no COMID:
@@ -108,6 +116,17 @@ mapview(site_watersheds, col.regions = "#56B4E9", alpha.regions = 0.2, lwd = 3, 
   mapview(sites, cex = 5, col.regions = "black", layer.name = "Points") + 
   mapview(st_read('data/site_flowlines.gpkg', quiet = T), lwd = 3, color = "red", layer.name = "Flowline")
 ```
+```{r}
+siteplot = subset(site_watersheds, site_watersheds$site == c('W10'))
+siteplot2 = subset(site_watersheds, site_watersheds$site == c('W20'))
+sitex = subset(sites, sites$site == c('W10'))
+sitey = subset(sites, sites$site == c('W20'))
+mapview(siteplot, col.regions = "#56B4E9", alpha.regions = 0.2, lwd = 3, layer.name = "Watershed") +
+  mapview(siteplot2, col.regions = "#56B4E9", alpha.regions = 0.2, lwd = 3, layer.name = "Watershed")+
+  mapview(sitex, cex = 5, col.regions = "black", layer.name = "Points") + 
+  mapview(sitey, cex = 5, col.regions = "black", layer.name = "Points") + 
+  mapview(st_read('data/site_flowlines.gpkg', quiet = T), lwd = 3, color = "red", layer.name = "Flowline")
+```
 
 ## Fixing funky sites
 
@@ -131,17 +150,17 @@ mapview(sus_nhd[[2]], col.regions = "#56B4E9", alpha.regions = 0.4, legend = FAL
 # Based on the map, it appears that this site should be linked to comid = 17416032
 # In the table below, add sites and their correct comid's
 
-updated_sites <- tibble(site = c("site8"),
-                        comid = c(17416032))
-
-sites <- updated_sites %>%
-  getNHDcomid(.) %>%
-  # Replace this new data in the sites df:
-  bind_rows(filter(sites, !site %in% sus_points$site))
-
-site_watersheds <- getWatersheds(df = updated_sites, make_pretty = TRUE) %>%
-  inner_join(., select(sf::st_drop_geometry(updated_sites), site, comid), by = "comid") %>%
-  bind_rows(filter(site_watersheds, !site %in% sus_points$site))
+# updated_sites <- tibble(site = c("site8"),
+#                         comid = c(17416032))
+# 
+# sites <- updated_sites %>%
+#   getNHDcomid(.) %>%
+#   # Replace this new data in the sites df:
+#   bind_rows(filter(sites, !site %in% sus_points$site))
+# 
+# site_watersheds <- getWatersheds(df = updated_sites, make_pretty = TRUE) %>%
+#   inner_join(., select(sf::st_drop_geometry(updated_sites), site, comid), by = "comid") %>%
+#   bind_rows(filter(site_watersheds, !site %in% sus_points$site))
 ```
 
 If after reviewing the delineated watersheds you have found that some locations are in fact not appropriate for this analysis, remove them now:
