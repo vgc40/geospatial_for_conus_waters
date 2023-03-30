@@ -44,53 +44,29 @@ mapviewOptions(basemaps.color.shuffle=FALSE,basemaps='OpenTopoMap')
 For this code to run properly, your site data must be configured as follows:
 
 1)  Each site is identified with a unique site name. In the data set, this column must be called `site`.
-2)  Each site has coordinates, with column names `longitude` and `latitude`. Knowledge of coordinate projection required. **OR:**
-    Each site has their known COMID, with column name `comid`. 
+2)  Each site has their known COMID, with column name `comid`. 
 4)  Site data table is a CSV, and stored in the `data/` folder. 
 
-I have included an example data set called `placeholder.csv`, along with all of the additional data sets necessary for the code to run, stored in the `data` folder. 
 
 #### Downloading necessary data sets
 
 Currently, this workflow requires downloading several data sets locally for much speedier run times. This includes: PRISM climate & aridity rasters, NHD flow direction data, and CONUS-wide NHD catchments. All data sets are found in the shared `data` folder.
 
-### Site data assumptions.
-
-This analysis is only appropriate for locations along adequately-sized streams. Some streams are too small to be captured by NHDPlusV2; it is also common for coordinates to fall in the wrong catchment (especially for big rivers). For that reason, review each site and make sure that the NHD feature attributes were appropriately captured.
 
 # National Hydrodraphy Dataset (NHD) data extraction
 
-Identify each sample's NHD COMID. This COMID will allow site linkages with all datasets in this workflow. If COMID is already listed in the CSV, make `site_type = "comid"`.
+Use COMID to allow site linkages with all datasets in this workflow. 
 
 ```{r}
 sf_use_s2(FALSE)
-site_type = "xy" # OR site_type = "comid"
-sites <- read_csv("data/SSS_testonly_latlong.csv")
+site_type = "comid" # This steps assumes you have checked your COMIDs
+sites <- read_csv("data/SSS_testonly_comid_VGC.csv")
 ```
 
-Additional steps for sites with coordinates, and no COMID:
-
-```{r}
-if(site_type == "xy"){
-  sites <- sites %>%
-    dplyr::select(site, latitude, longitude) %>% 
-    sf::st_as_sf(coords = c("longitude","latitude"), crs = 4269) # 4269 = NAD83 CRS
-  
-  if(sf::st_crs(sites) != sf::st_crs(4269)){
-    sites <- sites %>% st_transform(., crs = 4269)
-  }
-  
-  mapview(sites)
-}
-```
 
 Pull all meta data associated with each site's COMID. 
 
 ```{r}
-if(site_type == "xy"){
-  sites <- getNHDxy(df = sites)
-}
-
 if(site_type == "comid"){
   sites <- getNHDcomid(df = dplyr::select(sites, site, comid))
 }
@@ -103,10 +79,10 @@ site_watersheds <- getWatersheds(df = sites, make_pretty = TRUE) %>%
   inner_join(., select(sf::st_drop_geometry(sites), site, comid), by = "comid")
 ```
 
-Ensure that each site is accurately represented by the NHD (some locations may be located on streams that are too small to be captured by the NHD, others may have coordinates that are slightly off, potentially placing them in the wrong catchment). Here, we create simple maps of each watershed, to determine if the delineated watershed/NHD attributes are appropriate. This can take a while depending on how many sites you are doing this for. Maps are automatically stored in the `data/maps/` folder. It is highly recommended to review each map, particularly for known locations along BIG rivers and TINY streams.
+Map all your sites. Maps are automatically stored in the `data/maps/` folder. It is highly recommended to review each map, particularly for known locations along BIG rivers and TINY streams.Note: COMIDs should have been checked before running this code. 
 
-```{r}
-map2(sites$site, sites$comid, getMaps) 
+```{r map2,echo = T, warning = FALSE, comment = F, message = FALSE, results='hide'}
+suppressWarnings(map2(sites$site, sites$comid, getMaps)) 
 ```
 
 Interactive map showing all sites and their delineated watersheds:
@@ -116,65 +92,7 @@ mapview(site_watersheds, col.regions = "#56B4E9", alpha.regions = 0.2, lwd = 3, 
   mapview(sites, cex = 5, col.regions = "black", layer.name = "Points") + 
   mapview(st_read('data/site_flowlines.gpkg', quiet = T), lwd = 3, color = "red", layer.name = "Flowline")
 ```
-```{r}
-siteplot = subset(site_watersheds, site_watersheds$site == c('W10'))
-siteplot2 = subset(site_watersheds, site_watersheds$site == c('W20'))
-sitex = subset(sites, sites$site == c('W10'))
-sitey = subset(sites, sites$site == c('W20'))
-mapview(siteplot, col.regions = "#56B4E9", alpha.regions = 0.2, lwd = 3, layer.name = "Watershed") +
-  mapview(siteplot2, col.regions = "#56B4E9", alpha.regions = 0.2, lwd = 3, layer.name = "Watershed")+
-  mapview(sitex, cex = 5, col.regions = "black", layer.name = "Points") + 
-  mapview(sitey, cex = 5, col.regions = "black", layer.name = "Points") + 
-  mapview(st_read('data/site_flowlines.gpkg', quiet = T), lwd = 3, color = "red", layer.name = "Flowline")
-```
 
-## Fixing funky sites
-
-If after reviewing the delineated watersheds you have found that some site coordinates place that location in the wrong catchment, we will need to explore that site's nearby catchments to link it to the correct COMID:
-
-```{r}
-# Hmm... site9 on the Platte River doesn't seem right...
-
-sus_points <- sites %>% 
-  # list weird sites here:
-  filter(site %in% c("site8"))
-
-sus_nhd <- sus_points %>% 
-  sf::st_buffer(., dist = 0.01) %>%
-  sus_mapper(.)
-
-mapview(sus_nhd[[2]], col.regions = "#56B4E9", alpha.regions = 0.4, legend = FALSE) +
-  mapview(sus_points, cex = 5, col.regions = "black", legend = FALSE) + 
-  mapview(sus_nhd[[1]], lwd = 1.5, color = "red", legend = FALSE)
-
-# Based on the map, it appears that this site should be linked to comid = 17416032
-# In the table below, add sites and their correct comid's
-
-# updated_sites <- tibble(site = c("site8"),
-#                         comid = c(17416032))
-# 
-# sites <- updated_sites %>%
-#   getNHDcomid(.) %>%
-#   # Replace this new data in the sites df:
-#   bind_rows(filter(sites, !site %in% sus_points$site))
-# 
-# site_watersheds <- getWatersheds(df = updated_sites, make_pretty = TRUE) %>%
-#   inner_join(., select(sf::st_drop_geometry(updated_sites), site, comid), by = "comid") %>%
-#   bind_rows(filter(site_watersheds, !site %in% sus_points$site))
-```
-
-If after reviewing the delineated watersheds you have found that some locations are in fact not appropriate for this analysis, remove them now:
-
-```{r}
-small_sites <- c("site9")
-
-# site 9 appears to be a headwater stream too small for analysis with NHDPlus V2:
-sites <- sites %>%
-  filter(!site %in% small_sites)
-
-site_watersheds <- site_watersheds %>%
-  filter(!site %in% small_sites)
-```
 
 # StreamCat data extractions
 
@@ -186,7 +104,7 @@ This `getStreamCat()` function is adapted from [Simon Topp's Lakecat extraction]
 
 To download the data that you want, be sure to update the `epa_categories` vector argument in `getStreamCat()` with the names of the categorized data sets you are interested in downloading. A list of those data sets can be found [here](https://gaftp.epa.gov/epadatacommons/ORD/NHDPlusLandscapeAttributes/StreamCat/HydroRegions/). Change `save = TRUE` to `save = FALSE` if you do not want to keep all CONUS-level StreamCat data that you downloaded.
 
-```{r}
+```{r cat,echo = T, warning = FALSE, comment = F, message = FALSE, results='hide'}
 sites <- getStreamCat(sites = sites,
                       # Choose EPA categories to download here. These example two categories took a few minutes to download. 
                       epa_categories = c("ImperviousSurfaces", "Dams"),
@@ -197,7 +115,7 @@ sites <- getStreamCat(sites = sites,
 
 Lastly, we pull in additional data that is not found in StreamCat. This includes [PRISM climate data](<https://prism.oregonstate.edu/normals/>), [aridity data](<https://figshare.com/articles/dataset/Global_Aridity_Index_and_Potential_Evapotranspiration_ET0_Climate_Database_v2/7504448/6>), and [Omernik Ecoregion data](<https://www.epa.gov/eco-research/level-iii-and-iv-ecoregions-continental-united-states>) for each site's coordinates (i.e., at the site location, NOT aggregated across its watershed). We also calculate mean aridity and dominant Ecoregion across site watersheds. Our [net primary production](https://lpdaac.usgs.gov/products/mod17a3hgfv006/) layer is no longer available from NASA so this data set has been excluded from this data pull. I plan to update this workflow to include it again once it becomes available.
 
-```{r}
+```{r noncat,echo = T, warning = FALSE, comment = F, message = FALSE, results='hide'}
 # Extract the mean aridity index within each site's watershed as well as each site's location
 sites <- getAridity(df = sites, sf = site_watersheds)
 
@@ -217,14 +135,15 @@ sites <- getChemistry(df = sites, sf = site_watersheds)
 # https://lpdaac.usgs.gov/products/mod17a3hgfv006/ "Terra MODIS Net Primary Production Yearly L4 Global 500 m SIN Grid products are currently unavailable due to unexpected errors in the input data. Please note that a newer version of MODIS land products is available and plans are being developed for the retirement of Version 6 MODIS data products. Users are advised to transition to the improved Version 6.1 products as soon as possible."
 ```
 
-Flag sites whose watersheds extend outside CONUS. For these sites, watershed statistics may not be appropriate, since they only represent the area within CONUS. Here, I am saying that any watershed that is less than 97% within the US is "international".
+Export data with only columns of interest
 
 ```{r}
-final_data <- sites %>% 
-  st_drop_geometry() %>%
-  select(site, starts_with('WSPctFull')) %>%
-  select(site, international = 2) %>%
-  mutate(international = ifelse(international <= 97, "Largely International", "Within CONUS")) %>%
-  left_join(select(sites, -starts_with('WSPctFull')), ., by='site')
+data_final = sites %>%
+  dplyr::select("site","comid","gnis_name","lengthkm","shape_length",   "streamleve","streamorde",,"areasqkm","totdasqkm","divdasqkm","maxelevraw", "minelevraw","maxelevsmo", "minelevsmo","slope","elevfixed","hwtype",       "slopelenkm","qa_ma", "WsPctFull.x","DamDensWs","DamNIDStorWs",  
+"DamNrmStorWs","WsPctFull.y","PctImp2006Ws","PctImp2008Ws","PctImp2011Ws",   "PctImp2001Ws","PctImp2013Ws","PctImp2019Ws","PctImp2016Ws" ,  "PctImp2004Ws","AriditySite","AridityWs","OmernikIIISite","OmernikIISite",  "OmernikISite","OmernikIIIWs","OmernikIIWs","OmernikIWs","TmeanSite","TmaxSite","TminSite","PrecipSite","AluminumSite","CalciumSite","CopperSite",     "IronSite","ManganeseSite","PhosphSite","AluminumWs","CalciumWs","CopperWs" ,"IronWs","ManganeseWs","PhosphWs")
+
+write.csv(data_final,paste0("Geospatial_short_",Sys.Date()))
+write.csv(sites,paste0("Geospatial_all_",Sys.Date()))
+
 ```
 
