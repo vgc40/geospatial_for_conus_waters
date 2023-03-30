@@ -1,5 +1,6 @@
 getNHDcomid <- function(df = sites){
-  
+  #install.packages("crayons")
+  library('crayons')
   #Select NHD flowlines that df are located on, subsequently getting NHD metadata for each sample location.
   subset_nhdplus(comids = df$comid,
                  output_file = 'data/site_flowlines.gpkg',
@@ -11,6 +12,15 @@ getNHDcomid <- function(df = sites){
   
   
   df_points <- st_read('data/site_flowlines.gpkg', quiet = T)
+  
+  # st_read only has one entry for each comid which is a problem for duplicated comids
+  # Find the duplicated commids in df and add then add the extra rows
+  if (nrow(df_points)!= nrow(df)){
+    cat(red$bold("Your data has duplicated COMIDs"))
+    dupli = df$comid[duplicated(df$comid)] # find duplicated comids
+    temp.rows = df_points[which(df_points$comid %in% as.integer(dupli)),]
+  df_points = rbind(df_points,temp.rows)  
+  }
   
   coords <- vector("list", length = nrow(df_points))
   
@@ -51,6 +61,8 @@ getNHDcomid <- function(df = sites){
     distinct(comid,.keep_all=TRUE) %>%
     as_tibble()
   
+  # st_read removes duplicates again but there is no need to fix it by hand because coords has all the sites and the duplicates are added again with the left join
+  # 
   #join site points to NHD data
   coords <- coords %>%
     left_join(site_lines,by='comid') %>%
