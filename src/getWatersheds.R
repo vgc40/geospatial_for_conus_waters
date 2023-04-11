@@ -29,7 +29,7 @@ getWatersheds <- function(df = sites, massive = TRUE, make_pretty = TRUE){
     sf::st_drop_geometry() %>%
     dplyr::mutate(comid_list = map(site, watersheds)) %>%
     tidyr::unnest(., cols = comid_list) %>%
-    select(origin,
+    dplyr::select(origin,
            comid = comid_list) %>%
     distinct(.keep_all = TRUE)
   

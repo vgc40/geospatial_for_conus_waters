@@ -19,7 +19,7 @@ site_hucs <- do.call('rbind',site_hucs) %>%
          huc8 = paste0('HUC-',str_sub(huc12,end = 8)),
          huc10 = paste0('HUC-',str_sub(huc12,end = 10)),
          huc12 = paste0('HUC-',huc12)) %>%
-  select(huc2,huc4,huc6,huc8,huc10,huc12)
+  dplyr::select(huc2,huc4,huc6,huc8,huc10,huc12)
 
 #Select NHD flowlines that df are located on, subsequently getting NHD metadata for each sample location.
 subset_nhdplus(comids = df$comid,
@@ -40,7 +40,7 @@ site_lines <- st_read('data/site_flowlines.gpkg', quiet = T) %>%
 #join site points to NHD data
 df <- df %>%
   left_join(site_lines,by='comid') %>%
-  select(-c(geom)) %>%
+  dplyr::select(-c(geom)) %>%
   mutate(across(3:146, as.character)) %>%
   mutate(comid = as.integer(comid))
 

@@ -2,16 +2,7 @@
 title: "geospatial_for_conus_waters_workflow"
 author: "Kathryn Willi modified by VGC"
 date: "2023-02-20"
-knit: (
-  function(inputFile, encoding) { 
-
-    pSubTitle <- paste0("Geospatial_",Sys.Date())
-
-    rmarkdown::render( 
-      input       = inputFile, 
-      encoding    = encoding, 
-      params      = list(sub_title = pSubTitle),      
-      output_file = pSubTitle)})
+output: html_document
 ---
 
 ```{r setup, include=TRUE, echo = T, warning = F, comment = F, message = FALSE}
@@ -60,7 +51,7 @@ Use COMID to allow site linkages with all datasets in this workflow.
 ```{r}
 sf_use_s2(FALSE)
 site_type = "comid" # This steps assumes you have checked your COMIDs
-sites <- read_csv("data/SSS_testonly_comid_VGC.csv")
+sites <- read_csv("data/MFC_comid.csv")
 ```
 
 
@@ -142,8 +133,8 @@ data_final = sites %>%
   dplyr::select("site","comid","gnis_name","lengthkm","shape_length",   "streamleve","streamorde",,"areasqkm","totdasqkm","divdasqkm","maxelevraw", "minelevraw","maxelevsmo", "minelevsmo","slope","elevfixed","hwtype",       "slopelenkm","qa_ma", "WsPctFull.x","DamDensWs","DamNIDStorWs",  
 "DamNrmStorWs","WsPctFull.y","PctImp2006Ws","PctImp2008Ws","PctImp2011Ws",   "PctImp2001Ws","PctImp2013Ws","PctImp2019Ws","PctImp2016Ws" ,  "PctImp2004Ws","AriditySite","AridityWs","OmernikIIISite","OmernikIISite",  "OmernikISite","OmernikIIIWs","OmernikIIWs","OmernikIWs","TmeanSite","TmaxSite","TminSite","PrecipSite","AluminumSite","CalciumSite","CopperSite",     "IronSite","ManganeseSite","PhosphSite","AluminumWs","CalciumWs","CopperWs" ,"IronWs","ManganeseWs","PhosphWs")
 
-write.csv(data_final,paste0("Geospatial_short_",Sys.Date()))
-write.csv(sites,paste0("Geospatial_all_",Sys.Date()))
+write.csv(data_final,paste0("Geospatial_short_",Sys.Date(),".csv"), row.names = F)
+write.csv(sites,paste0("Geospatial_all_",Sys.Date(),".csv"), row.names = F)
 
 ```
 
