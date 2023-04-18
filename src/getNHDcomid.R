@@ -1,6 +1,6 @@
 getNHDcomid <- function(df = sites){
   #install.packages("crayons")
-  library('crayons')
+  #library('crayons')
   #Select NHD flowlines that df are located on, subsequently getting NHD metadata for each sample location.
   subset_nhdplus(comids = df$comid,
                  output_file = 'data/site_flowlines.gpkg',

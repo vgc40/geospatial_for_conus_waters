@@ -1,5 +1,5 @@
 getStreamCat <- function(sites = sites,
-                         epa_categories = c("AgMidHiSlopes", "CoalMines", "CanalDensity", "ImperviousSurfaces", "NLCD2016", "Dams"),
+                         epa_categories = c("AgMidHiSlopes", "CoalMines", "CanalDensity", "ImperviousSurfaces", "NLCD2019", "Dams","FirePerimeters","Kffact",'Elevation',"NADP","RefStreamTempPred","RoadDensity","RoadStreamCrossings","Runoff","STATSGO_Set1","STATSGO_Set2","USCensus2010","WWTP","GeoChemPhys3","Lithology"),
                          save = TRUE){
 ### StreamCat extraction (adapted from Simon Topp's code)
 # Code adapted from Simon Topps LakeCat extraction [LakeCat](https://github.com/SimonTopp/USLakeClarityTrendr/blob/master/1_nhd_join_and_munge.Rmd).
